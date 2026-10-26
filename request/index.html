@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free Number 번호 삭제 요청</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>body{font-family:'Noto Sans KR','Malgun Gothic',sans-serif;background:#f3f5f9;color:#0f1b2d;margin:0;padding:20px}.c{max-width:420px;margin:6vh auto;background:#fff;border:1px solid #e3e8f0;border-radius:18px;padding:26px}h1{font-size:20px;margin:0 0 8px}p{font-size:13px;color:#51627c;line-height:1.7}input,textarea{font:inherit;width:100%;padding:11px 12px;border:1px solid #d5dce8;border-radius:10px;margin:8px 0;box-sizing:border-box}button{font:inherit;width:100%;background:#12b886;color:#fff;border:0;border-radius:10px;padding:12px;font-weight:700;margin-top:6px;cursor:pointer}#r{margin-top:12px;font-size:13px}</style></head><body>
+<div class="c"><h1>스팸 목록 번호 삭제 요청</h1><p>Free Number 사용자들이 스팸으로 신고한 번호 목록에서 본인 번호가 잘못 올라갔다면 삭제를 요청할 수 있습니다. 관리자가 확인한 뒤 목록에서 내리며, 이후 같은 번호는 자동으로 다시 공개되지 않습니다.</p>
+<input id="n" inputmode="tel" placeholder="삭제를 요청할 전화번호"><textarea id="why" rows="3" placeholder="사유 (예: 본인 사업장 번호입니다)"></textarea><button id="go">삭제 요청 보내기</button><div id="r"></div></div>
+<script>
+var SERVER_URL = 'https://whixzerzpjuhgyhdiojr.supabase.co';          /* admin/index.html 과 같은 값을 넣으세요 */
+var SERVER_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoaXh6ZXJ6cGp1aGd5aGRpb2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NTM3MTQsImV4cCI6MjEwODUyOTcxNH0.f7eow0BMeIeRwcT7jwxcFUybegUgeHf0eus1GVBpzVo';
+document.getElementById('go').onclick = function () {
+  var r = document.getElementById('r');
+  if (!SERVER_URL) { r.textContent = '서버 정보가 설정되지 않았습니다.'; return; }
+  var n = document.getElementById('n').value.replace(/[^0-9]/g, '');
+  if (n.length < 4) { r.textContent = '전화번호를 입력해 주세요.'; return; }
+  supabase.createClient(SERVER_URL, SERVER_ANON_KEY).rpc('request_removal', { p_num: n, p_reason: document.getElementById('why').value }).then(function (x) {
+    r.textContent = x.error ? '요청에 실패했습니다. 잠시 후 다시 시도해 주세요.' : '요청이 접수되었습니다. 확인 후 처리됩니다.';
+  });
+};
+</script></body></html>

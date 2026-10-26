@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free Number 관리자</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0}body{font-family:'Noto Sans KR','Malgun Gothic',sans-serif;background:#f3f5f9;color:#0f1b2d;font-size:14px}
+button{font:inherit;cursor:pointer}.hidden{display:none!important}
+#login{max-width:340px;margin:12vh auto;background:#fff;padding:28px;border-radius:18px;border:1px solid #e3e8f0}#login h1{font-size:20px;margin-bottom:16px}
+input,select{font:inherit;width:100%;padding:11px 12px;border:1px solid #d5dce8;border-radius:10px;margin-bottom:10px;background:#fff}
+.pri{background:#12b886;color:#fff;border:0;border-radius:10px;padding:11px 16px;font-weight:700;width:100%}
+#app{display:flex;min-height:100vh}aside{width:200px;background:#0f1b2d;color:#c7d2e6;padding:22px 14px;display:flex;flex-direction:column;gap:4px;flex:none}
+.lg{font-size:19px;font-weight:700;color:#fff;margin:0 8px 18px}.lg b{color:#34d3a8}.lg small{display:block;font-size:11px;color:#7e8da9;font-weight:500}
+.mi{padding:11px 12px;border-radius:10px;display:flex;justify-content:space-between;cursor:pointer}.mi.on{background:#1a2a45;color:#fff;font-weight:700}.mi span{background:#e8590c;color:#fff;border-radius:10px;padding:0 8px;font-size:12px;font-weight:700}
+.me{margin-top:auto;font-size:11.5px;color:#7e8da9;padding:8px}.me u{cursor:pointer}
+main{flex:1;padding:22px 26px;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px}h2{font-size:20px}.top input{width:240px;margin:0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}.st{background:#fff;border:1px solid #e3e8f0;border-radius:16px;padding:14px 16px}.st em{font-style:normal;font-size:12.5px;color:#6b7891}.st b{display:block;font-size:26px;margin:4px 0 2px}
+.card{background:#fff;border:1px solid #e3e8f0;border-radius:16px;overflow:hidden;margin-bottom:16px}.ch{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid #e3e8f0;flex-wrap:wrap}.ch b{font-size:15px}.ch .sp{margin-left:auto;display:flex;gap:8px}
+table{width:100%;border-collapse:collapse}th{font-size:12px;color:#6b7891;text-align:left;padding:9px 14px;background:#f8fafc}td{padding:10px 14px;border-top:1px solid #eef1f6;vertical-align:middle}.r{text-align:right}.ac{text-align:right;white-space:nowrap}.mu{color:#6b7891}
+.b{font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:9px;border:1px solid #d5dce8;background:#fff;color:#0f1b2d;margin-left:6px}.b.ok{background:#12b886;border-color:#12b886;color:#fff}.b.no{color:#e5484d;border-color:#f1c4c6}
+.tag{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:9px;background:#eef1f6;color:#6b7891}.tag.pub{background:#12b88622;color:#0b8f68}.tag.rev{background:#e8590c22;color:#c2410c}
+.wn{font-size:10.5px;background:#e8590c;color:#fff;border-radius:7px;padding:1px 6px;margin-left:6px;font-weight:700}
+.note{padding:11px 16px;font-size:12px;color:#6b7891;border-top:1px solid #eef1f6}.empty{padding:28px;text-align:center;color:#8794ad}
+.drop{margin:14px 16px;border:2px dashed #cfd8e6;border-radius:14px;padding:22px;text-align:center;color:#51627c}.pad{padding:0 16px 14px}
+#msg{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#2b2b2b;color:#fff;padding:12px 20px;border-radius:24px;opacity:0;transition:.2s;pointer-events:none}#msg.on{opacity:1}
+@media(max-width:800px){#app{flex-direction:column}aside{width:auto;flex-direction:row;flex-wrap:wrap}.me{display:none}.stats{grid-template-columns:1fr 1fr}main{padding:14px}}
+</style></head><body>
+<div id="login"><h1>Free Number 관리자</h1><input id="em" type="email" placeholder="이메일" autocomplete="username"><input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password"><button class="pri" id="go">로그인</button><div id="lerr" class="mu" style="margin-top:10px;font-size:12.5px"></div></div>
+<div id="app" class="hidden">
+<aside><div class="lg">Free<b>Number</b><small>관리자</small></div>
+<div class="mi on" data-t="dash">대시보드</div><div class="mi" data-t="pend">신고 대기 <span id="bp" class="hidden"></span></div><div class="mi" data-t="pub">공유 목록</div><div class="mi" data-t="req">삭제 요청 <span id="br" class="hidden"></span></div><div class="mi" data-t="seed">시드 업로드</div>
+<div class="me"><span id="who"></span><br><u id="out">로그아웃</u></div></aside>
+<main><div class="top"><h2 id="title"></h2><input id="q" placeholder="번호 검색 (숫자)" class="hidden"></div><div id="view"></div></main></div>
+<div id="msg"></div>
+<script>
+/* ★ 여기에 Supabase 프로젝트 정보를 넣으세요 (Project Settings > API) */
+var SERVER_URL = 'https://whixzerzpjuhgyhdiojr.supabase.co';
+var SERVER_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoaXh6ZXJ6cGp1aGd5aGRpb2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NTM3MTQsImV4cCI6MjEwODUyOTcxNH0.f7eow0BMeIeRwcT7jwxcFUybegUgeHf0eus1GVBpzVo';
+
+var sb = null, tab = 'dash', CFG = { auto_public_min: 3, personal_review_min: 5, daily_report_max: 100 };
+var $ = function (id) { return document.getElementById(id); };
+function toast(m) { var e = $('msg'); e.textContent = m; e.classList.add('on'); setTimeout(function () { e.classList.remove('on'); }, 2200); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function fmt(n) { n = String(n); if (/^02\d{7,8}$/.test(n)) return n.replace(/^(02)(\d{3,4})(\d{4})$/, '$1-$2-$3'); if (/^0[1-9]\d{8,9}$/.test(n)) return n.replace(/^(0\d{2})(\d{3,4})(\d{4})$/, '$1-$2-$3'); return n; }
+function personal(n) { return /^01[016-9]/.test(n); }
+function fdate(t) { var d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+
+if (!SERVER_URL || !SERVER_ANON_KEY) { $('lerr').textContent = 'index.html 위쪽의 SERVER_URL / SERVER_ANON_KEY 를 먼저 입력하세요.'; }
+else sb = supabase.createClient(SERVER_URL, SERVER_ANON_KEY);
+
+$('go').onclick = function () {
+  if (!sb) return;
+  sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value }).then(function (r) {
+    if (r.error) { $('lerr').textContent = '로그인 실패: ' + r.error.message; return; }
+    enter(r.data.user);
+  });
+};
+$('out').onclick = function () { sb.auth.signOut().then(function () { location.reload(); }); };
+if (sb) sb.auth.getSession().then(function (r) { if (r.data.session) enter(r.data.session.user); });
+function enter(u) {
+  sb.from('removal_requests').select('id', { count: 'exact', head: true }).then(function (r) {
+    if (r.error) { $('lerr').textContent = '관리자 권한이 없습니다. (admins 표에 이메일 등록 필요)'; sb.auth.signOut(); return; }
+    $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('who').textContent = u.email; go('dash');
+  });
+}
+document.querySelectorAll('.mi').forEach(function (m) { m.onclick = function () { go(m.getAttribute('data-t')); }; });
+$('q').oninput = function () { clearTimeout(window.__qt); window.__qt = setTimeout(function () { go(tab, true); }, 300); };
+
+function go(t, keep) {
+  tab = t;
+  document.querySelectorAll('.mi').forEach(function (m) { m.classList.toggle('on', m.getAttribute('data-t') === t); });
+  var titles = { dash: '대시보드', pend: '신고 대기', pub: '공유 목록', req: '삭제 요청', seed: '시드 업로드' };
+  $('title').textContent = titles[t];
+  $('q').classList.toggle('hidden', t !== 'pend' && t !== 'pub');
+  if (!keep) $('q').value = '';
+  badges();
+  ({ dash: function () { return loadCfg().then(vDash); }, pend: function () { return vList('pending'); }, pub: function () { return vList('public'); }, req: vReq, seed: vSeed })[t]();
+}
+function badges() {
+  sb.from('spam_numbers').select('num', { count: 'exact', head: true }).eq('status', 'pending').then(function (r) { var b = $('bp'); b.textContent = r.count || 0; b.classList.toggle('hidden', !r.count); });
+  sb.from('removal_requests').select('id', { count: 'exact', head: true }).eq('status', 'open').then(function (r) { var b = $('br'); b.textContent = r.count || 0; b.classList.toggle('hidden', !r.count); });
+}
+function cnt(q) { return q.then(function (r) { return r.count || 0; }); }
+function loadCfg() { return sb.from('app_settings').select('*').then(function (r) { (r.data || []).forEach(function (x) { CFG[x.key] = x.val; }); }); }
+function saveCfg() {
+  var rows = [['auto_public_min', 'cfg1'], ['personal_review_min', 'cfg2'], ['daily_report_max', 'cfg3']].map(function (p) { return { key: p[0], val: Math.max(1, parseInt($(p[1]).value, 10) || CFG[p[0]]) }; });
+  sb.from('app_settings').upsert(rows, { onConflict: 'key' }).then(function (r) { if (r.error) toast(r.error.message); else { toast('기준값을 저장했습니다.'); go('dash'); } });
+}
+function vDash() {
+  Promise.all([
+    cnt(sb.from('spam_numbers').select('num', { count: 'exact', head: true }).eq('status', 'public')),
+    cnt(sb.from('spam_numbers').select('num', { count: 'exact', head: true }).eq('status', 'pending')),
+    cnt(sb.from('removal_requests').select('id', { count: 'exact', head: true }).eq('status', 'open')),
+    cnt(sb.from('spam_reports').select('num', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 86400000).toISOString()))
+  ]).then(function (v) {
+    function st(l, n, s) { return '<div class="st"><em>' + l + '</em><b>' + n.toLocaleString() + '</b><small class="mu">' + s + '</small></div>'; }
+    $('view').innerHTML = '<div class="stats">' + st('공유 중인 번호', v[0], '앱에 내려가는 목록') + st('승인 대기', v[1], '자동 공개 전 · 휴대폰 번호 포함') + st('삭제 요청', v[2], '처리 기한 3일') + st('최근 24시간 신고', v[3], '건') + '</div>' +
+      '<div class="card"><div class="ch"><b>공개 기준</b></div><div class="pad" style="padding-top:12px"><small class="mu">일반 번호(070·02·해외 등): 서로 다른 기기 N곳 이상 신고 시 자동 공개</small><input id="cfg1" type="number" min="1" value="' + CFG.auto_public_min + '"><small class="mu">휴대폰 번호(010 등): 자동 공개 없음 · N곳 이상이면 "승인 후보"로 표시, 관리자가 승인해야 공개</small><input id="cfg2" type="number" min="1" value="' + CFG.personal_review_min + '"><small class="mu">기기당 하루 신고 가능 번호 수</small><input id="cfg3" type="number" min="1" value="' + CFG.daily_report_max + '"><button class="pri" id="cfgsave">저장</button></div></div>';
+    $('cfgsave').onclick = saveCfg;
+  });
+}
+function vList(status) {
+  var q = $('q').value.replace(/[^0-9]/g, '');
+  if (!window.__cfgLoaded) { window.__cfgLoaded = 1; loadCfg().then(function () { vList(status); }); return; }
+  var req = sb.from('spam_numbers').select('*').eq('status', status).order('cnt', { ascending: false }).order('updated_at', { ascending: false }).limit(200);
+  if (q) req = req.like('num', '%' + q + '%');
+  req.then(function (r) {
+    if (r.error) { $('view').innerHTML = '<div class="empty">' + esc(r.error.message) + '</div>'; return; }
+    var rows = r.data.map(function (x) {
+      var acts = status === 'pending' ? '<button class="b ok" data-a="pub" data-n="' + x.num + '">승인</button><button class="b no" data-a="rm" data-n="' + x.num + '">삭제</button>' : '<button class="b no" data-a="rm" data-n="' + x.num + '">공개 해제</button>';
+      return '<tr><td><b>' + fmt(x.num) + '</b>' + (personal(x.num) ? '<span class="wn">개인번호 주의</span>' + (x.cnt >= CFG.personal_review_min ? '<span class="wn" style="background:#12b886">승인 후보</span>' : '') : '') + '</td><td>' + esc(x.cat || '-') + '</td><td class="r">' + x.cnt + '</td><td class="mu">' + fdate(x.updated_at) + '</td><td class="ac">' + acts + '</td></tr>';
+    }).join('');
+    $('view').innerHTML = '<div class="card"><table><tr><th>번호</th><th>유형</th><th class="r">신고</th><th>최근 변경</th><th></th></tr>' + (rows || '<tr><td colspan="5" class="empty">표시할 번호가 없습니다.</td></tr>') + '</table><div class="note">최대 200건 표시 · 검색으로 좁혀 보세요.</div></div>';
+    $('view').querySelectorAll('[data-a]').forEach(function (b) { b.onclick = function () { setStatus(b.getAttribute('data-n'), b.getAttribute('data-a') === 'pub' ? 'public' : 'removed'); }; });
+  });
+}
+function setStatus(num, status) {
+  sb.from('spam_numbers').update({ status: status, locked: true }).eq('num', num).then(function (r) { if (r.error) toast(r.error.message); else { toast(status === 'public' ? '공개했습니다.' : '목록에서 내렸습니다.'); go(tab, true); } });
+}
+function vReq() {
+  sb.from('removal_requests').select('*').eq('status', 'open').order('created_at', { ascending: false }).then(function (r) {
+    var rows = (r.data || []).map(function (x) {
+      return '<tr><td><b>' + fmt(x.num) + '</b></td><td class="mu">' + esc(x.reason) + '</td><td>' + fdate(x.created_at) + '</td><td class="ac"><button class="b ok" data-a="done" data-i="' + x.id + '" data-n="' + x.num + '">공개 해제</button><button class="b" data-a="kept" data-i="' + x.id + '">유지</button></td></tr>';
+    }).join('');
+    $('view').innerHTML = '<div class="card"><table><tr><th>번호</th><th>사유</th><th>요청일</th><th></th></tr>' + (rows || '<tr><td colspan="4" class="empty">대기 중인 삭제 요청이 없습니다.</td></tr>') + '</table><div class="note">공개 해제하면 모든 앱에서 다음 동기화 때 경고가 사라지고, 같은 번호는 자동으로 다시 공개되지 않습니다.</div></div>';
+    $('view').querySelectorAll('[data-a]').forEach(function (b) {
+      b.onclick = function () {
+        var a = b.getAttribute('data-a'), id = b.getAttribute('data-i');
+        var p = a === 'done' ? sb.from('spam_numbers').update({ status: 'removed', locked: true }).eq('num', b.getAttribute('data-n')) : Promise.resolve({});
+        Promise.resolve(p).then(function () { return sb.from('removal_requests').update({ status: a }).eq('id', id); }).then(function () { toast('처리했습니다.'); go('req'); });
+      };
+    });
+  });
+}
+var seedRows = [];
+function parseCsv(t) {
+  var out = [], seen = {}, skip = { personal: 0, bad: 0 };
+  t.replace(/^﻿/, '').split(/\r?\n/).forEach(function (line, i) {
+    if (!line.trim()) return;
+    var p = line.split(','); var num = (p[0] || '').replace(/[^0-9]/g, '');
+    if (i === 0 && !num) return;
+    if (num.length < 4 || num.length > 20) { skip.bad++; return; }
+    if (personal(num)) { skip.personal++; return; }
+    if (seen[num]) return; seen[num] = 1;
+    out.push({ num: num, cat: (p[1] || '').trim().slice(0, 20) });
+  });
+  return { rows: out, skip: skip };
+}
+function vSeed() {
+  $('view').innerHTML = '<div class="card"><div class="ch"><b>시드 업로드 (CSV)</b></div><div class="drop"><input type="file" id="csv" accept=".csv,text/csv,text/plain"><br><small class="mu">열: 번호, 유형 · 010 등 휴대폰 번호는 자동으로 제외됩니다</small></div><div class="pad" id="prev"></div></div>';
+  $('csv').onchange = function () {
+    var f = this.files[0]; if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      var r = parseCsv(String(rd.result)); seedRows = r.rows;
+      $('prev').innerHTML = '<table><tr><td>업로드 미리보기</td><td class="r">총 ' + (r.rows.length + r.skip.personal + r.skip.bad) + '건</td></tr><tr><td class="mu">등록 가능</td><td class="r" style="color:#12b886;font-weight:700">' + r.rows.length + '건</td></tr><tr><td class="mu">휴대폰(010 등) 번호 제외</td><td class="r" style="color:#e8590c;font-weight:700">' + r.skip.personal + '건</td></tr><tr><td class="mu">형식 오류 제외</td><td class="r">' + r.skip.bad + '건</td></tr></table>' + (r.rows.length ? '<div style="padding-top:12px"><button class="b ok" id="up">' + r.rows.length + '건 등록</button></div>' : '');
+      if ($('up')) $('up').onclick = upload;
+    };
+    rd.readAsText(f, 'UTF-8');
+  };
+}
+function upload() {
+  var rows = seedRows.map(function (x) { return { num: x.num, cat: x.cat, status: 'public', locked: true }; }), i = 0;
+  (function next() {
+    if (i >= rows.length) { toast(rows.length + '건 등록했습니다.'); go('pub'); return; }
+    sb.from('spam_numbers').upsert(rows.slice(i, i + 500), { onConflict: 'num' }).then(function (r) { if (r.error) { toast(r.error.message); return; } i += 500; next(); });
+  })();
+}
+</script></body></html>
